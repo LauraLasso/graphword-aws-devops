@@ -12,7 +12,7 @@ graph TD
     J --> K[Terraform Destroy]
     K --> L[Create Release]
     L --> M[Merge to master]
-    M --> N[Re-Run Terraform in Develop]
+    M --> N[Re-Run Terraform in master]
     N --> O[Pipeline Completed]
 
     G -->|Error| X[Notify Error]

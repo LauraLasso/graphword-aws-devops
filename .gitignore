@@ -5,3 +5,5 @@ terraform/*.tfstate.backup
 terraform/.terraform.lock.hcl
 terraform/crash.log.github/workflows/
 .github/workflows/
+.github/workflows/
+GraphWord Scalable Graph AWS.pdf

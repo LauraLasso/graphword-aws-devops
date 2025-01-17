@@ -5,9 +5,9 @@ yum install -y python3 aws-cli python3-pip
 pip3 install boto3 jq
 
 # Variables de configuración
-CODE_BUCKET="graph-code-bucket-ulpgc3"
-DATALAKE_BUCKET="datalake-graph-ulpgc3"
-DATAMART_BUCKET="datamart-dictionary-ulpgc3"
+CODE_BUCKET="graph-code-bucket-ulpgc4"
+DATALAKE_BUCKET="datalake-graph-ulpgc4"
+DATAMART_BUCKET="datamart-dictionary-ulpgc4"
 CURRENT_DATE=$(date +%Y%m%d)
 
 # Obtener ACCOUNT_ID dinámicamente
@@ -17,7 +17,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-QUEUE_URL="https://sqs.us-east-1.amazonaws.com/$ACCOUNT_ID/datalake-graph-ulpgc3-$CURRENT_DATE-queue"
+QUEUE_URL="https://sqs.us-east-1.amazonaws.com/$ACCOUNT_ID/datalake-graph-ulpgc4-$CURRENT_DATE-queue"
 LOCAL_DATALAKE_DIR="/datalake/$CURRENT_DATE"
 LOCAL_DATAMART_DIR="/datamart_dictionary"
 

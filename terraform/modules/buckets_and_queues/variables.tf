@@ -1,35 +1,28 @@
+variable "functional_buckets" {
+  description = "Lista de buckets funcionales"
+  type        = list(string)
+  default = [
+    "datalake-graph-ulpgc4",
+    "datamart-dictionary-ulpgc4",
+    "datamart-graph-ulpgc4",
+    "datamart-stats-ulpgc4"
+  ]
+}
+
+variable "code_bucket" {
+  description = "Bucket para almacenar archivos de código"
+  type        = string
+  default     = "graph-code-bucket-ulpgc4"
+}
+
 variable "region" {
   description = "Región donde se crearán los recursos"
   type        = string
   default     = "us-east-1"
 }
 
-variable "datalake_graph_bucket_name" {
-  description = "Nombre del bucket para datalake-graph"
+variable "datalake_bucket" {
+  description = "Nombre del bucket del datalake"
   type        = string
-  default     = "datalake-graph-ulpgc3"
-}
-
-variable "datamart_dictionary_bucket_name" {
-  description = "Nombre del bucket para datamart-dictionary"
-  type        = string
-  default     = "datamart-dictionary-ulpgc3"
-}
-
-variable "datamart_graph_bucket_name" {
-  description = "Nombre del bucket para datamart-graph"
-  type        = string
-  default     = "datamart-graph-ulpgc3"
-}
-
-variable "datamart_stats_bucket_name" {
-  description = "Nombre del bucket para datamart-stats"
-  type        = string
-  default     = "datamart-stats-ulpgc3"
-}
-
-variable "code_bucket_name" {
-  description = "Nombre del bucket para los archivos de código"
-  type        = string
-  default     = "graph-code-bucket-ulpgc3"
+  default     = "datalake-graph-ulpgc4"
 }

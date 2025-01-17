@@ -2,17 +2,17 @@ variable "functional_buckets" {
   description = "Lista de buckets funcionales"
   type        = list(string)
   default = [
-    "datalake-graph-ulpgc3",
-    "datamart-dictionary-ulpgc3",
-    "datamart-graph-ulpgc3",
-    "datamart-stats-ulpgc3"
+    "datalake-graph-ulpgc4",
+    "datamart-dictionary-ulpgc4",
+    "datamart-graph-ulpgc4",
+    "datamart-stats-ulpgc4"
   ]
 }
 
 variable "code_bucket" {
   description = "Bucket para almacenar archivos de código"
   type        = string
-  default     = "graph-code-bucket-ulpgc3"
+  default     = "graph-code-bucket-ulpgc4"
 }
 
 variable "region" {

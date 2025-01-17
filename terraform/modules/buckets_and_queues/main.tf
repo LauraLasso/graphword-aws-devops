@@ -9,14 +9,12 @@ locals {
   current_date = formatdate("YYYYMMDD", timestamp())
 }
 
-# Crear bucket datalake
 resource "null_resource" "create_datalake_graph_bucket" {
   provisioner "local-exec" {
     command = "aws s3api create-bucket --bucket ${var.datalake_graph_bucket}${var.suffix_number} --region ${var.region}"
   }
 }
 
-# Crear carpeta "events"
 resource "null_resource" "create_datalake_graph_events_folder" {
   provisioner "local-exec" {
     command = "aws s3api put-object --bucket ${var.datalake_graph_bucket}${var.suffix_number} --key events/"
@@ -24,7 +22,6 @@ resource "null_resource" "create_datalake_graph_events_folder" {
   depends_on = [null_resource.create_datalake_graph_bucket]
 }
 
-# Crear carpeta con la fecha actual
 resource "null_resource" "create_datalake_graph_date_folder" {
   provisioner "local-exec" {
     command = "aws s3api put-object --bucket ${var.datalake_graph_bucket}${var.suffix_number} --key ${local.current_date}/"
@@ -32,7 +29,6 @@ resource "null_resource" "create_datalake_graph_date_folder" {
   depends_on = [null_resource.create_datalake_graph_bucket]
 }
 
-# Crear cola SQS para "events"
 resource "null_resource" "create_datalake_graph_events_queue" {
   provisioner "local-exec" {
     command = "aws sqs create-queue --queue-name ${var.datalake_graph_bucket}${var.suffix_number}-events-queue --region ${var.region}"
@@ -40,7 +36,6 @@ resource "null_resource" "create_datalake_graph_events_queue" {
   depends_on = [null_resource.create_datalake_graph_bucket]
 }
 
-# Crear cola SQS para la carpeta de la fecha actual
 resource "null_resource" "create_datalake_graph_date_queue" {
   provisioner "local-exec" {
     command = "aws sqs create-queue --queue-name ${var.datalake_graph_bucket}${var.suffix_number}-${local.current_date}-queue --region ${var.region}"
@@ -48,7 +43,6 @@ resource "null_resource" "create_datalake_graph_date_queue" {
   depends_on = [null_resource.create_datalake_graph_bucket]
 }
 
-# Crear política de SQS para la cola "events"
 resource "aws_sqs_queue_policy" "datalake_graph_events_policy" {
   queue_url = "https://sqs.${var.region}.amazonaws.com/${local.account_id}/${var.datalake_graph_bucket}${var.suffix_number}-events-queue"
 
@@ -73,7 +67,6 @@ resource "aws_sqs_queue_policy" "datalake_graph_events_policy" {
   depends_on = [null_resource.create_datalake_graph_events_queue]
 }
 
-# Crear política de SQS para la cola de la fecha actual
 resource "aws_sqs_queue_policy" "datalake_graph_date_policy" {
   queue_url = "https://sqs.${var.region}.amazonaws.com/${local.account_id}/${var.datalake_graph_bucket}${var.suffix_number}-${local.current_date}-queue"
 
@@ -117,7 +110,6 @@ resource "aws_s3_bucket_notification" "datalake_graph_notifications" {
   depends_on = [aws_sqs_queue_policy.datalake_graph_date_policy, aws_sqs_queue_policy.datalake_graph_events_policy]
 }
 
-# Eliminar mensajes iniciales en las colas
 resource "null_resource" "clear_events_queue" {
   provisioner "local-exec" {
     command = <<EOT
@@ -137,7 +129,6 @@ resource "null_resource" "clear_date_queue" {
 }
 
 
-# Datamart-dictionary-ulpgc
 resource "null_resource" "create_datamart_dictionary_bucket" {
   provisioner "local-exec" {
     command = "aws s3api create-bucket --bucket ${var.datamart_dictionary_bucket}${var.suffix_number} --region ${var.region}"
@@ -152,7 +143,6 @@ resource "null_resource" "create_datamart_dictionary_queue" {
   depends_on = [null_resource.create_datamart_dictionary_bucket]
 }
 
-# Datamart-dictionary-ulpgc
 resource "aws_sqs_queue_policy" "datamart_dictionary_policy" {
   queue_url = "https://sqs.${var.region}.amazonaws.com/${data.aws_caller_identity.current.account_id}/${var.datamart_dictionary_bucket}${var.suffix_number}-queue"
 
@@ -200,7 +190,6 @@ resource "null_resource" "clear_datamart_dictionary_queue" {
 }
 
 
-# Datamart-graph-ulpgc
 resource "null_resource" "create_datamart_graph_bucket" {
   provisioner "local-exec" {
     command = "aws s3api create-bucket --bucket ${var.datamart_graph_bucket}${var.suffix_number} --region ${var.region}"
@@ -215,7 +204,6 @@ resource "null_resource" "create_datamart_graph_queue" {
   depends_on = [null_resource.create_datamart_graph_bucket]
 }
 
-# Datamart-graph-ulpgc
 resource "aws_sqs_queue_policy" "datamart_graph_policy" {
   queue_url = "https://sqs.${var.region}.amazonaws.com/${data.aws_caller_identity.current.account_id}/${var.datamart_graph_bucket}${var.suffix_number}-queue"
 
@@ -260,7 +248,6 @@ resource "null_resource" "clear_datamart_graph_queue" {
   depends_on = [aws_s3_bucket_notification.datamart_graph_notifications]
 }
 
-# Datamart-stats-ulpgc
 resource "null_resource" "create_datamart_stats_bucket" {
   provisioner "local-exec" {
     command = "aws s3api create-bucket --bucket ${var.datamart_stats_bucket}${var.suffix_number} --region ${var.region}"
@@ -275,7 +262,6 @@ resource "null_resource" "create_datamart_stats_queue" {
   depends_on = [null_resource.create_datamart_stats_bucket]
 }
 
-# Datamart-stats-ulpgc
 resource "aws_sqs_queue_policy" "datamart_stats_policy" {
   queue_url = "https://sqs.${var.region}.amazonaws.com/${data.aws_caller_identity.current.account_id}/${var.datamart_stats_bucket}${var.suffix_number}-queue"
 
@@ -321,7 +307,6 @@ resource "null_resource" "clear_datamart_stats_queue" {
   depends_on = [aws_s3_bucket_notification.datamart_stats_notifications]
 }
 
-# Crear bucket de código
 resource "null_resource" "create_code_bucket" {
   provisioner "local-exec" {
     command = "aws s3api create-bucket --bucket ${var.code_bucket}${var.suffix_number} --region ${var.region}"
@@ -329,7 +314,6 @@ resource "null_resource" "create_code_bucket" {
   depends_on = [null_resource.clear_datamart_stats_queue]
 }
 
-# Subir archivos .py al bucket de código
 resource "aws_s3_object" "code_files" {
   for_each = toset([
     "data-processing/crawler.py",

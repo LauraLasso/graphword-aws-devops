@@ -8,18 +8,18 @@ STATS_FILE = os.path.join("datamart_stats", "statistics.json")
 
 def load_statistics():
     if not os.path.exists(STATS_FILE):
-        return {"error": "Estadísticas no encontradas. Por favor, ejecute stat-builder.py primero."}
+        return {"error": "Statistics not found. Please run stat-builder.py first."}
     with open(STATS_FILE, 'r', encoding='utf-8') as f:
         return json.load(f)
 
 @app.route('/', methods=['GET'])
 def home():
     routes = [
-        {"path": "/stats", "description": "Muestra todas las estadísticas disponibles."},
-        {"path": "/stats/processing-times", "description": "Promedio de tiempos de procesamiento por endpoint."},
-        {"path": "/stats/requests-by-ip", "description": "Cantidad de solicitudes realizadas desde cada dirección IP."},
-        {"path": "/stats/user-agents", "description": "Resumen de los agentes de usuario utilizados."},
-        {"path": "/stats/errors", "description": "Estadísticas de errores por endpoint."},
+        {"path": "/stats", "description": "Displays all available statistics."},
+        {"path": "/stats/processing-times", "description": "Average processing times per endpoint."},
+        {"path": "/stats/requests-by-ip", "description": "Number of requests made from each IP address."},
+        {"path": "/stats/user-agents", "description": "Summary of user agents used."},
+        {"path": "/stats/errors", "description": "Error statistics by endpoint."},
     ]
 
     html = """
@@ -27,7 +27,7 @@ def home():
     <html lang="es">
     <head>
         <meta charset="UTF-8">
-        <title>API - Estadísticas</title>
+        <title>API - Statistics</title>
         <style>
             body {
                 font-family: Arial, sans-serif;
@@ -59,8 +59,8 @@ def home():
         </style>
     </head>
     <body>
-        <h1>Bienvenido a la API de Estadísticas</h1>
-        <p>Selecciona una de las siguientes rutas para explorar:</p>
+        <h1>Welcome to the Statistics API</h1>
+        <p>Select one of the following routes to explore:</p>
         <ul>
     """
 

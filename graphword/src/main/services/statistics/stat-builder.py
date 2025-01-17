@@ -20,13 +20,10 @@ class StatBuilder:
             "error_requests": defaultdict(int),
             "average_processing_time_by_endpoint": {},
         }
-
-        # Recorremos todos los archivos, incluyendo subdirectorios
         for root, dirs, files in os.walk(self.datalake_directory):
             for event_file in files:
                 file_path = os.path.join(root, event_file)
 
-                # Procesar solo archivos JSON
                 if not event_file.endswith(".json"):
                     continue
 
@@ -45,7 +42,6 @@ class StatBuilder:
                         user_agent = event["user_agent"]
                         processing_time = event.get("processing_time")
 
-                        # Validaciones
                         if endpoint:
                             stats["requests_by_endpoint"][endpoint] += 1
                         if method:
@@ -61,7 +57,6 @@ class StatBuilder:
                         if isinstance(status_code, int) and 400 <= status_code < 600:
                             stats["error_requests"][endpoint] += 1
 
-        # Calcular estadísticas de tiempos de procesamiento
         for endpoint, times in stats["processing_times"].items():
             if times:
                 stats["average_processing_time_by_endpoint"][endpoint] = {
@@ -79,7 +74,7 @@ class StatBuilder:
         stats_file = os.path.join(self.datamart_directory, "statistics.json")
         with open(stats_file, 'w', encoding='utf-8') as f:
             json.dump(stats, f, indent=4, ensure_ascii=False)
-        print(f"Estadísticas guardadas en: {stats_file}")
+        print(f"Stadistic saved in: {stats_file}")
 
     def run(self):
         stats = self.gather_statistics()

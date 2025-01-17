@@ -84,33 +84,25 @@ class Controller:
         self.vocabulary_processor = VocabularyProcessor()
 
     def process_datalake_to_datamart(self):
-        # Leer archivos normalizados desde el datalake
         normalized_files = self.datalake_reader.get_normalized_files()
 
-        # Procesar cada archivo normalizado
         for file_path in normalized_files:
             try:
-                # Leer contenido del archivo normalizado
                 content = self.datalake_reader.read_file(file_path)
 
-                # Generar vocabulario del documento
                 doc_vocabulary = self.vocabulary_processor.process_document_vocabulary(content)
 
-                # Extraer información de la ruta del archivo
                 path_parts = file_path.split(os.sep)
-                date_dir = path_parts[-3]  # Fecha del directorio
-                book_dir = path_parts[-2]  # ID del libro
+                date_dir = path_parts[-3]  
+                book_dir = path_parts[-2]  
 
-                # Guardar vocabulario del documento en el datamart
                 self.datamart_writer.save_document_vocabulary(doc_vocabulary, date_dir, book_dir)
             except Exception as e:
                 print(f"Error processing file {file_path}: {e}")
 
-        # Guardar vocabulario global en el datamart
         self.datamart_writer.save_global_vocabulary(self.vocabulary_processor.global_vocabulary)
 
 
-# Main Script
 if __name__ == "__main__":
     controller = Controller()
     controller.process_datalake_to_datamart()

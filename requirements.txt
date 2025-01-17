@@ -1,0 +1,6 @@
+flask
+boto3
+pytest
+prometheus-flask-exporter
+networkx
+matplotlib

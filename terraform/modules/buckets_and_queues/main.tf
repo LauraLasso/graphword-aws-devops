@@ -12,14 +12,14 @@ locals {
 # Crear bucket datalake
 resource "null_resource" "create_datalake_graph_bucket" {
   provisioner "local-exec" {
-    command = "aws s3api create-bucket --bucket ${var.datalake_graph_bucket_name} --region ${var.region} && ping -n 6 127.0.0.1 >nul"
+    command = "aws s3api create-bucket --bucket ${var.datalake_bucket} --region ${var.region} && ping -n 6 127.0.0.1 >nul"
   }
 }
 
 # Crear carpeta "events"
 resource "null_resource" "create_datalake_graph_events_folder" {
   provisioner "local-exec" {
-    command = "aws s3api put-object --bucket ${var.datalake_graph_bucket_name} --key events/"
+    command = "aws s3api put-object --bucket ${var.datalake_bucket} --key events/"
   }
   depends_on = [null_resource.create_datalake_graph_bucket]
 }
@@ -27,7 +27,7 @@ resource "null_resource" "create_datalake_graph_events_folder" {
 # Crear carpeta con la fecha actual
 resource "null_resource" "create_datalake_graph_date_folder" {
   provisioner "local-exec" {
-    command = "aws s3api put-object --bucket ${var.datalake_graph_bucket_name} --key ${local.current_date}/"
+    command = "aws s3api put-object --bucket ${var.datalake_bucket} --key ${local.current_date}/"
   }
   depends_on = [null_resource.create_datalake_graph_bucket]
 }
@@ -35,7 +35,7 @@ resource "null_resource" "create_datalake_graph_date_folder" {
 # Crear cola SQS para "events"
 resource "null_resource" "create_datalake_graph_events_queue" {
   provisioner "local-exec" {
-    command = "aws sqs create-queue --queue-name ${var.datalake_graph_bucket_name}-events-queue --region ${var.region} && ping -n 6 127.0.0.1 >nul"
+    command = "aws sqs create-queue --queue-name ${var.datalake_bucket}-events-queue --region ${var.region} && ping -n 6 127.0.0.1 >nul"
   }
   depends_on = [null_resource.create_datalake_graph_bucket]
 }
@@ -43,14 +43,14 @@ resource "null_resource" "create_datalake_graph_events_queue" {
 # Crear cola SQS para la carpeta de la fecha actual
 resource "null_resource" "create_datalake_graph_date_queue" {
   provisioner "local-exec" {
-    command = "aws sqs create-queue --queue-name ${var.datalake_graph_bucket_name}-${local.current_date}-queue --region ${var.region} && ping -n 6 127.0.0.1 >nul"
+    command = "aws sqs create-queue --queue-name ${var.datalake_bucket}-${local.current_date}-queue --region ${var.region} && ping -n 6 127.0.0.1 >nul"
   }
   depends_on = [null_resource.create_datalake_graph_bucket]
 }
 
 # Crear política de SQS para la cola "events"
 resource "aws_sqs_queue_policy" "datalake_graph_events_policy" {
-  queue_url = "https://sqs.${var.region}.amazonaws.com/${local.account_id}/${var.datalake_graph_bucket_name}-events-queue"
+  queue_url = "https://sqs.${var.region}.amazonaws.com/${local.account_id}/${var.datalake_bucket}-events-queue"
 
   policy = jsonencode({
     Version   = "2012-10-17"
@@ -61,10 +61,10 @@ resource "aws_sqs_queue_policy" "datalake_graph_events_policy" {
           Service = "s3.amazonaws.com"
         }
         Action    = "SQS:SendMessage"
-        Resource  = "arn:aws:sqs:${var.region}:${local.account_id}:${var.datalake_graph_bucket_name}-events-queue"
+        Resource  = "arn:aws:sqs:${var.region}:${local.account_id}:${var.datalake_bucket}-events-queue"
         Condition = {
           ArnLike = {
-            "aws:SourceArn" = "arn:aws:s3:::${var.datalake_graph_bucket_name}"
+            "aws:SourceArn" = "arn:aws:s3:::${var.datalake_bucket}"
           }
         }
       }
@@ -75,7 +75,7 @@ resource "aws_sqs_queue_policy" "datalake_graph_events_policy" {
 
 # Crear política de SQS para la cola de la fecha actual
 resource "aws_sqs_queue_policy" "datalake_graph_date_policy" {
-  queue_url = "https://sqs.${var.region}.amazonaws.com/${local.account_id}/${var.datalake_graph_bucket_name}-${local.current_date}-queue"
+  queue_url = "https://sqs.${var.region}.amazonaws.com/${local.account_id}/${var.datalake_bucket}-${local.current_date}-queue"
 
   policy = jsonencode({
     Version   = "2012-10-17"
@@ -86,10 +86,10 @@ resource "aws_sqs_queue_policy" "datalake_graph_date_policy" {
           Service = "s3.amazonaws.com"
         }
         Action    = "SQS:SendMessage"
-        Resource  = "arn:aws:sqs:${var.region}:${local.account_id}:${var.datalake_graph_bucket_name}-${local.current_date}-queue"
+        Resource  = "arn:aws:sqs:${var.region}:${local.account_id}:${var.datalake_bucket}-${local.current_date}-queue"
         Condition = {
           ArnLike = {
-            "aws:SourceArn" = "arn:aws:s3:::${var.datalake_graph_bucket_name}"
+            "aws:SourceArn" = "arn:aws:s3:::${var.datalake_bucket}"
           }
         }
       }
@@ -99,18 +99,18 @@ resource "aws_sqs_queue_policy" "datalake_graph_date_policy" {
 }
 
 resource "aws_s3_bucket_notification" "datalake_graph_notifications" {
-  bucket = var.datalake_graph_bucket_name
+  bucket = var.datalake_bucket
 
   queue {
     id             = "events-notification"
-    queue_arn      = "arn:aws:sqs:${var.region}:${local.account_id}:${var.datalake_graph_bucket_name}-events-queue"
+    queue_arn      = "arn:aws:sqs:${var.region}:${local.account_id}:${var.datalake_bucket}-events-queue"
     events         = ["s3:ObjectCreated:*", "s3:ObjectRemoved:*", "s3:ObjectRestore:*"]
     filter_prefix  = "events/"
   }
 
   queue {
     id             = "date-notification"
-    queue_arn      = "arn:aws:sqs:${var.region}:${local.account_id}:${var.datalake_graph_bucket_name}-${local.current_date}-queue"
+    queue_arn      = "arn:aws:sqs:${var.region}:${local.account_id}:${var.datalake_bucket}-${local.current_date}-queue"
     events         = ["s3:ObjectCreated:*", "s3:ObjectRemoved:*", "s3:ObjectRestore:*"]
     filter_prefix  = "${local.current_date}/"
   }
@@ -121,7 +121,7 @@ resource "aws_s3_bucket_notification" "datalake_graph_notifications" {
 resource "null_resource" "clear_events_queue" {
   provisioner "local-exec" {
     command = <<EOT
-      aws sqs purge-queue --queue-url https://sqs.${var.region}.amazonaws.com/${local.account_id}/${var.datalake_graph_bucket_name}-events-queue
+      aws sqs purge-queue --queue-url https://sqs.${var.region}.amazonaws.com/${local.account_id}/${var.datalake_bucket}-events-queue
     EOT
   }
   depends_on = [aws_s3_bucket_notification.datalake_graph_notifications]
@@ -130,18 +130,18 @@ resource "null_resource" "clear_events_queue" {
 resource "null_resource" "clear_date_queue" {
   provisioner "local-exec" {
     command = <<EOT
-      aws sqs purge-queue --queue-url https://sqs.${var.region}.amazonaws.com/${local.account_id}/${var.datalake_graph_bucket_name}-${local.current_date}-queue
+      aws sqs purge-queue --queue-url https://sqs.${var.region}.amazonaws.com/${local.account_id}/${var.datalake_bucket}-${local.current_date}-queue
     EOT
   }
   depends_on = [aws_s3_bucket_notification.datalake_graph_notifications]
 }
 
 
-# Datamart-dictionary-ulpgc3
+# Datamart-dictionary-ulpgc4
 resource "null_resource" "create_datamart_dictionary_bucket" {
   provisioner "local-exec" {
     command = <<EOT
-      aws s3api create-bucket --bucket ${var.datamart_dictionary_bucket_name} --region us-east-1
+      aws s3api create-bucket --bucket datamart-dictionary-ulpgc4 --region us-east-1
       ping -n 5 127.0.0.1 >nul
     EOT
   }
@@ -151,16 +151,16 @@ resource "null_resource" "create_datamart_dictionary_bucket" {
 resource "null_resource" "create_datamart_dictionary_queue" {
   provisioner "local-exec" {
     command = <<EOT
-      aws sqs create-queue --queue-name ${var.datamart_dictionary_bucket_name}-queue --region us-east-1
+      aws sqs create-queue --queue-name datamart-dictionary-ulpgc4-queue --region us-east-1
       ping -n 5 127.0.0.1 >nul
     EOT
   }
   depends_on = [null_resource.create_datamart_dictionary_bucket]
 }
 
-# Datamart_dictionary_bucket
+# Datamart-dictionary-ulpgc4
 resource "aws_sqs_queue_policy" "datamart_dictionary_policy" {
-  queue_url = "https://sqs.us-east-1.amazonaws.com/${data.aws_caller_identity.current.account_id}/${var.datamart_dictionary_bucket_name}-queue"
+  queue_url = "https://sqs.us-east-1.amazonaws.com/${data.aws_caller_identity.current.account_id}/datamart-dictionary-ulpgc4-queue"
 
   policy = jsonencode({
     Version   = "2012-10-17"
@@ -171,10 +171,10 @@ resource "aws_sqs_queue_policy" "datamart_dictionary_policy" {
           Service = "s3.amazonaws.com"
         }
         Action    = "SQS:SendMessage"
-        Resource  = "arn:aws:sqs:us-east-1:${data.aws_caller_identity.current.account_id}:${var.datamart_dictionary_bucket_name}-queue"
+        Resource  = "arn:aws:sqs:us-east-1:${data.aws_caller_identity.current.account_id}:datamart-dictionary-ulpgc4-queue"
         Condition = {
           ArnLike = {
-            "aws:SourceArn" = "arn:aws:s3:::${var.datamart_dictionary_bucket_name}"
+            "aws:SourceArn" = "arn:aws:s3:::datamart-dictionary-ulpgc4"
           }
         }
       }
@@ -185,11 +185,11 @@ resource "aws_sqs_queue_policy" "datamart_dictionary_policy" {
 
 
 resource "aws_s3_bucket_notification" "datamart_dictionary_notifications" {
-  bucket = "${var.datamart_dictionary_bucket_name}"
+  bucket = "datamart-dictionary-ulpgc4"
 
   queue {
     id        = "notification-datamart-dictionary"
-    queue_arn = "arn:aws:sqs:us-east-1:${data.aws_caller_identity.current.account_id}:${var.datamart_dictionary_bucket_name}-queue"
+    queue_arn = "arn:aws:sqs:us-east-1:${data.aws_caller_identity.current.account_id}:datamart-dictionary-ulpgc4-queue"
     events    = ["s3:ObjectCreated:*", "s3:ObjectRemoved:*", "s3:ObjectRestore:*"]
   }
   depends_on = [aws_sqs_queue_policy.datamart_dictionary_policy]
@@ -199,18 +199,18 @@ resource "aws_s3_bucket_notification" "datamart_dictionary_notifications" {
 resource "null_resource" "clear_datamart_dictionary_queue" {
   provisioner "local-exec" {
     command = <<EOT
-      aws sqs purge-queue --queue-url https://sqs.us-east-1.amazonaws.com/${data.aws_caller_identity.current.account_id}/${var.datamart_dictionary_bucket_name}-queue
+      aws sqs purge-queue --queue-url https://sqs.us-east-1.amazonaws.com/${data.aws_caller_identity.current.account_id}/datamart-dictionary-ulpgc4-queue
     EOT
   }
   depends_on = [aws_s3_bucket_notification.datamart_dictionary_notifications]
 }
 
 
-# Datamart_graph_bucket
+# Datamart-graph-ulpgc4
 resource "null_resource" "create_datamart_graph_bucket" {
   provisioner "local-exec" {
     command = <<EOT
-      aws s3api create-bucket --bucket ${var.datamart_graph_bucket_name} --region us-east-1
+      aws s3api create-bucket --bucket datamart-graph-ulpgc4 --region us-east-1
       ping -n 5 127.0.0.1 >nul
     EOT
   }
@@ -220,16 +220,16 @@ resource "null_resource" "create_datamart_graph_bucket" {
 resource "null_resource" "create_datamart_graph_queue" {
   provisioner "local-exec" {
     command = <<EOT
-      aws sqs create-queue --queue-name ${var.datamart_graph_bucket_name}-queue --region us-east-1
+      aws sqs create-queue --queue-name datamart-graph-ulpgc4-queue --region us-east-1
       ping -n 5 127.0.0.1 >nul
     EOT
   }
   depends_on = [null_resource.create_datamart_graph_bucket]
 }
 
-# Datamart_graph_bucket
+# Datamart-graph-ulpgc4
 resource "aws_sqs_queue_policy" "datamart_graph_policy" {
-  queue_url = "https://sqs.us-east-1.amazonaws.com/${data.aws_caller_identity.current.account_id}/${var.datamart_graph_bucket_name}-queue"
+  queue_url = "https://sqs.us-east-1.amazonaws.com/${data.aws_caller_identity.current.account_id}/datamart-graph-ulpgc4-queue"
 
   policy = jsonencode({
     Version   = "2012-10-17"
@@ -240,10 +240,10 @@ resource "aws_sqs_queue_policy" "datamart_graph_policy" {
           Service = "s3.amazonaws.com"
         }
         Action    = "SQS:SendMessage"
-        Resource  = "arn:aws:sqs:us-east-1:${data.aws_caller_identity.current.account_id}:${var.datamart_graph_bucket_name}-queue"
+        Resource  = "arn:aws:sqs:us-east-1:${data.aws_caller_identity.current.account_id}:datamart-graph-ulpgc4-queue"
         Condition = {
           ArnLike = {
-            "aws:SourceArn" = "arn:aws:s3:::${var.datamart_graph_bucket_name}"
+            "aws:SourceArn" = "arn:aws:s3:::datamart-graph-ulpgc4"
           }
         }
       }
@@ -253,12 +253,13 @@ resource "aws_sqs_queue_policy" "datamart_graph_policy" {
 }
 
 resource "aws_s3_bucket_notification" "datamart_graph_notifications" {
-  bucket = "${var.datamart_graph_bucket_name}"
+  bucket = "datamart-graph-ulpgc4"
 
   queue {
     id        = "notification-datamart-graph"
-    queue_arn = "arn:aws:sqs:us-east-1:${data.aws_caller_identity.current.account_id}:${var.datamart_graph_bucket_name}-queue"
+    queue_arn = "arn:aws:sqs:us-east-1:${data.aws_caller_identity.current.account_id}:datamart-graph-ulpgc4-queue"
     events    = ["s3:ObjectCreated:*", "s3:ObjectRemoved:*", "s3:ObjectRestore:*"]
+
   }
   depends_on = [aws_sqs_queue_policy.datamart_graph_policy]
 }
@@ -266,17 +267,17 @@ resource "aws_s3_bucket_notification" "datamart_graph_notifications" {
 resource "null_resource" "clear_datamart_graph_queue" {
   provisioner "local-exec" {
     command = <<EOT
-      aws sqs purge-queue --queue-url https://sqs.us-east-1.amazonaws.com/${data.aws_caller_identity.current.account_id}/${var.datamart_graph_bucket_name}-queue
+      aws sqs purge-queue --queue-url https://sqs.us-east-1.amazonaws.com/${data.aws_caller_identity.current.account_id}/datamart-graph-ulpgc4-queue
     EOT
   }
   depends_on = [aws_s3_bucket_notification.datamart_graph_notifications]
 }
 
-# Datamart_stats_bucket
+# Datamart-stats-ulpgc4
 resource "null_resource" "create_datamart_stats_bucket" {
   provisioner "local-exec" {
     command = <<EOT
-      aws s3api create-bucket --bucket ${var.datamart_stats_bucket_name} --region us-east-1
+      aws s3api create-bucket --bucket datamart-stats-ulpgc4 --region us-east-1
       ping -n 5 127.0.0.1 >nul
     EOT
   }
@@ -286,16 +287,16 @@ resource "null_resource" "create_datamart_stats_bucket" {
 resource "null_resource" "create_datamart_stats_queue" {
   provisioner "local-exec" {
     command = <<EOT
-      aws sqs create-queue --queue-name ${var.datamart_stats_bucket_name}-queue --region us-east-1
+      aws sqs create-queue --queue-name datamart-stats-ulpgc4-queue --region us-east-1
       ping -n 5 127.0.0.1 >nul
     EOT
   }
   depends_on = [null_resource.create_datamart_stats_bucket]
 }
 
-# Datamart_stats_bucket
+# Datamart-stats-ulpgc4
 resource "aws_sqs_queue_policy" "datamart_stats_policy" {
-  queue_url = "https://sqs.us-east-1.amazonaws.com/${data.aws_caller_identity.current.account_id}/${var.datamart_stats_bucket_name}-queue"
+  queue_url = "https://sqs.us-east-1.amazonaws.com/${data.aws_caller_identity.current.account_id}/datamart-stats-ulpgc4-queue"
 
   policy = jsonencode({
     Version   = "2012-10-17"
@@ -306,10 +307,10 @@ resource "aws_sqs_queue_policy" "datamart_stats_policy" {
           Service = "s3.amazonaws.com"
         }
         Action    = "SQS:SendMessage"
-        Resource  = "arn:aws:sqs:us-east-1:${data.aws_caller_identity.current.account_id}:${var.datamart_stats_bucket_name}-queue"
+        Resource  = "arn:aws:sqs:us-east-1:${data.aws_caller_identity.current.account_id}:datamart-stats-ulpgc4-queue"
         Condition = {
           ArnLike = {
-            "aws:SourceArn" = "arn:aws:s3:::${var.datamart_stats_bucket_name}"
+            "aws:SourceArn" = "arn:aws:s3:::datamart-stats-ulpgc4"
           }
         }
       }
@@ -320,11 +321,11 @@ resource "aws_sqs_queue_policy" "datamart_stats_policy" {
 
 
 resource "aws_s3_bucket_notification" "datamart_stats_notifications" {
-  bucket = "${var.datamart_stats_bucket_name}"
+  bucket = "datamart-stats-ulpgc4"
 
   queue {
     id        = "notification-datamart-stats"
-    queue_arn = "arn:aws:sqs:us-east-1:${data.aws_caller_identity.current.account_id}:${var.datamart_stats_bucket_name}-queue"
+    queue_arn = "arn:aws:sqs:us-east-1:${data.aws_caller_identity.current.account_id}:datamart-stats-ulpgc4-queue"
     events    = ["s3:ObjectCreated:*", "s3:ObjectRemoved:*", "s3:ObjectRestore:*"]
   }
   depends_on = [aws_sqs_queue_policy.datamart_stats_policy]
@@ -333,7 +334,7 @@ resource "aws_s3_bucket_notification" "datamart_stats_notifications" {
 resource "null_resource" "clear_datamart_stats_queue" {
   provisioner "local-exec" {
     command = <<EOT
-      aws sqs purge-queue --queue-url https://sqs.us-east-1.amazonaws.com/${data.aws_caller_identity.current.account_id}/${var.datamart_stats_bucket_name}-queue
+      aws sqs purge-queue --queue-url https://sqs.us-east-1.amazonaws.com/${data.aws_caller_identity.current.account_id}/datamart-stats-ulpgc4-queue
     EOT
   }
   depends_on = [aws_s3_bucket_notification.datamart_stats_notifications]
@@ -342,7 +343,7 @@ resource "null_resource" "clear_datamart_stats_queue" {
 # Crear bucket de código
 resource "null_resource" "create_code_bucket" {
   provisioner "local-exec" {
-    command = "aws s3api create-bucket --bucket ${var.code_bucket_name} --region us-east-1 && ping -n 5 127.0.0.1 >nul"
+    command = "aws s3api create-bucket --bucket graph-code-bucket-ulpgc4 --region us-east-1 && ping -n 5 127.0.0.1 >nul"
   }
   depends_on = [null_resource.clear_datamart_stats_queue]
 }
@@ -358,7 +359,7 @@ resource "aws_s3_object" "code_files" {
     "statistics/stat-query.py"
   ])
 
-  bucket = "${var.code_bucket_name}"
+  bucket = "graph-code-bucket-ulpgc4"
   key    = basename(each.value)
   source = "${path.root}/../graphword/src/main/services/${each.value}"
 

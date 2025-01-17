@@ -1,5 +1,5 @@
 provider "aws" {
-  region = var.region
+  region = "us-east-1"
 }
 
 data "aws_caller_identity" "current" {}
@@ -7,16 +7,16 @@ data "aws_caller_identity" "current" {}
 module "buckets_and_queues" {
   source = "./modules/buckets_and_queues"
 
-  datalake_graph_bucket_name   = var.datalake_graph_bucket_name
-  datamart_dictionary_bucket_name = var.datamart_dictionary_bucket_name
-  datamart_graph_bucket_name   = var.datamart_graph_bucket_name
-  datamart_stats_bucket_name   = var.datamart_stats_bucket_name
-  code_bucket_name             = var.code_bucket_name
-  region                       = var.region
+  functional_buckets = var.functional_buckets
+  code_bucket        = var.code_bucket
+  region             = var.region
 }
 
 module "instances" {
   source = "./modules/instances"
+
+  code_bucket        = var.code_bucket
+  functional_buckets = var.functional_buckets
 
   depends_on = [
     module.buckets_and_queues

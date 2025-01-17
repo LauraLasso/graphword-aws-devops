@@ -5,9 +5,9 @@ yum install -y python3 aws-cli python3-pip jq
 pip3 install boto3
 
 # Variables de configuración
-CODE_BUCKET="graph-code-bucket-ulpgc4"
-DATALAKE_BUCKET="datalake-graph-ulpgc4"
-DATAMART_STATS_BUCKET="datamart-stats-ulpgc4"
+CODE_BUCKET="{{ code_bucket }}"
+DATALAKE_BUCKET="{{ datalake_graph_bucket }}"
+DATAMART_STATS_BUCKET="{{ datamart_stats_bucket }}"
 LOCAL_DATALAKE_EVENTS_DIR="/datalake/events"
 LOCAL_DATAMART_STATS_DIR="/datamart_stats"
 
@@ -18,7 +18,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-SQS_EVENTS_QUEUE_URL="https://sqs.us-east-1.amazonaws.com/$ACCOUNT_ID/datalake-graph-ulpgc4-events-queue"
+SQS_EVENTS_QUEUE_URL="https://sqs.us-east-1.amazonaws.com/$ACCOUNT_ID/$DATALAKE_BUCKET-events-queue"
 
 # Crear directorios locales
 mkdir -p $LOCAL_DATALAKE_EVENTS_DIR

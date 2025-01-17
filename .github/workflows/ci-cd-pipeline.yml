@@ -198,8 +198,8 @@ jobs:
           git merge origin/develop --allow-unrelated-histories || true
           git checkout --theirs .
           git add .
-          git commit -m "Resolving conflicts favoring develop"
-          git push origin master
+          git commit -m "Resolving conflicts favoring develop" || echo "No changes to commit"
+          git push origin master --force
 
       - name: List Terraform files
         run: ls -la ./terraform

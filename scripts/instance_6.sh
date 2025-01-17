@@ -5,19 +5,19 @@ yum install -y python3 aws-cli python3-pip jq
 pip3 install boto3 flask
 
 # Variables de configuración
-CODE_BUCKET="graph-code-bucket-ulpgc4"
-DATAMART_STATS_BUCKET="datamart-stats-ulpgc4"
+CODE_BUCKET="{{ code_bucket }}"
+DATAMART_STATS_BUCKET="{{ datamart_stats_bucket }}"
 LOCAL_DATAMART_STATS_DIR="/datamart_stats"
 SCRIPT_PATH="/tmp/stat-query.py"
 
 # Obtener ACCOUNT_ID dinámicamente
-ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)ye
+ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
 if [ $? -ne 0 ]; then
     echo "Error obteniendo ACCOUNT_ID. Asegúrate de que AWS CLI esté configurado correctamente."
     exit 1
 fi
 
-SQS_QUEUE_URL="https://sqs.us-east-1.amazonaws.com/$ACCOUNT_ID/datamart-stats-ulpgc4-queue"
+SQS_QUEUE_URL="https://sqs.us-east-1.amazonaws.com/$ACCOUNT_ID/$DATAMART_STATS_BUCKET-queue"
 
 # Crear directorio local para datamart_stats
 mkdir -p $LOCAL_DATAMART_STATS_DIR

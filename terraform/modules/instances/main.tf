@@ -106,7 +106,23 @@ resource "aws_instance" "other_instances" {
   iam_instance_profile = "LabInstanceProfile"
 
   # Crear una lista de índices y excluir el índice 3 (instancia 4)
-  user_data = file("../scripts/instance_${element([0, 1, 2, 4, 5], count.index) + 1}.sh")
+  user_data = replace(
+    replace(
+      replace(
+        replace(
+          replace(
+            file("../scripts/instance_${element([0, 1, 2, 4, 5], count.index) + 1}.sh"),
+            "{{ datalake_graph_bucket }}", "${var.datalake_graph_bucket}${var.suffix_number}"
+          ),
+          "{{ datamart_dictionary_bucket }}", "${var.datamart_dictionary_bucket}${var.suffix_number}"
+        ),
+        "{{ datamart_graph_bucket }}", "${var.datamart_graph_bucket}${var.suffix_number}"
+      ),
+      "{{ datamart_stats_bucket }}", "${var.datamart_stats_bucket}${var.suffix_number}"
+    ),
+    "{{ code_bucket }}", "${var.code_bucket}${var.suffix_number}"
+  )
+
 
   tags = {
     Name = "EC2Instance-${element([0, 1, 2, 4, 5], count.index) + 1}"
@@ -128,7 +144,33 @@ resource "aws_instance" "instance4_clones" {
 
   iam_instance_profile = "LabInstanceProfile"
 
-  user_data = file("../scripts/instance_4.sh")  # Script `user_data` usado en la instancia 4 para ejecutar la API
+  # user_data = templatefile("${path.module}/../scripts/instance_4.sh", {
+  #   code_bucket           = "${var.code_bucket}${var.suffix_number}",
+  #   datalake_graph_bucket        = "${var.datalake_graph_bucket}${var.suffix_number}",
+  #   datamart_dictionary_bucket   = "${var.datamart_dictionary_bucket}${var.suffix_number}",
+  #   datamart_graph_bucket  = "${var.datamart_graph_bucket}${var.suffix_number}",
+  #   datamart_stats_bucket  = "${var.datamart_stats_bucket}${var.suffix_number}"
+  # })
+
+  user_data = replace(
+    replace(
+      replace(
+        replace(
+          replace(
+            file("../scripts/instance_4.sh"),
+            "{{ datalake_graph_bucket }}", "${var.datalake_graph_bucket}${var.suffix_number}"
+          ),
+          "{{ datamart_dictionary_bucket }}", "${var.datamart_dictionary_bucket}${var.suffix_number}"
+        ),
+        "{{ datamart_graph_bucket }}", "${var.datamart_graph_bucket}${var.suffix_number}"
+      ),
+      "{{ datamart_stats_bucket }}", "${var.datamart_stats_bucket}${var.suffix_number}"
+    ),
+    "{{ code_bucket }}", "${var.code_bucket}${var.suffix_number}"
+  )
+
+
+    # Script `user_data` usado en la instancia 4 para ejecutar la API
 
   tags = {
     Name = "EC2-Instance4-Clone-${count.index + 1}"

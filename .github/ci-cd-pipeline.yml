@@ -1,0 +1,281 @@
+name: 'Terraform CD Production'
+
+on:
+  push:
+    branches:
+      - develop
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+  checks: read
+
+jobs:
+  
+  cleanup-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: List Terraform files
+        run: ls -la ./terraform
+
+      # Configurar las credenciales AWS
+      - name: Configure AWS CLI
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}  # Solo si usas token temporal
+          aws-region: us-east-1
+
+      - name: Verificar AWS CLI
+        run: aws --version
+
+      - name: Verificar permisos de AWS
+        run: aws sts get-caller-identity
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: "latest"
+
+      - name: Terraform Init
+        working-directory: ./terraform
+        run: terraform init
+
+      - name: Terraform Plan
+        working-directory: ./terraform
+        run: terraform plan -out=tfplan
+        
+      - name: Terraform Apply
+        working-directory: ./terraform
+        run: terraform apply -auto-approve tfplan
+
+      - name: Verificar instalación de jq
+        run: jq --version
+        
+      - name: Instalar jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+
+      - name: Exportar nombre del bucket S3 desde `terraform.tfstate`
+        working-directory: ./terraform
+        run: |
+          BUCKET_NAME=$(jq -r '.outputs.datalake_bucket_name.value' terraform.tfstate)
+          if [ -z "$BUCKET_NAME" ]; then
+            echo "Error: El nombre del bucket S3 es nulo o vacío"
+            exit 1
+          fi
+          echo "BUCKET_NAME=$BUCKET_NAME" >> $GITHUB_ENV
+
+      - name: Exportar output de URL de API desde `terraform.tfstate`
+        working-directory: ./terraform
+        run: |
+          API_URL=$(jq -r '.outputs.api_graph_query_url.value' terraform.tfstate)
+          if [ -z "$API_URL" ]; then
+            echo "Error: La URL de la API es nula o vacía"
+            exit 1
+          fi
+          echo "API_URL=$API_URL" >> $GITHUB_ENV
+
+      - name: Comprobar libros en S3 con reintentos
+        run: |
+          RETRIES=30  # Aumentamos a 30 reintentos
+          WAIT_TIME=50  # Mantiene 30 segundos de espera entre reintentos
+          FECHA_ACTUAL=$(date +%Y%m%d)
+          CARPETAS=("1" "2" "3" "4" "5")
+          
+          for ((j=1; j<=$RETRIES; j++)); do
+            COMPLETADAS=0
+            for CARPETA in "${CARPETAS[@]}"; do
+              if aws s3 ls s3://$BUCKET_NAME/$FECHA_ACTUAL/$CARPETA/ > /dev/null 2>&1; then
+                echo "✔️ Carpeta $CARPETA encontrada en $BUCKET_NAME/$FECHA_ACTUAL"
+                COMPLETADAS=$((COMPLETADAS+1))
+              else
+                echo "❌ Carpeta $CARPETA no encontrada en $BUCKET_NAME/$FECHA_ACTUAL, reintento $j/$RETRIES"
+              fi
+            done
+      
+            if [ "$COMPLETADAS" -eq 5 ]; then
+              echo "✅ Todas las carpetas están presentes en $BUCKET_NAME/$FECHA_ACTUAL"
+              exit 0
+            fi
+      
+            echo "⏳ Esperando $WAIT_TIME segundos antes del siguiente reintento..."
+            sleep $WAIT_TIME
+          done
+      
+          echo "❌ Error: No se encontraron todas las carpetas después de $RETRIES intentos."
+          exit 1
+
+      # - name: Instalar ngrok manualmente
+      #   run: |
+      #     curl -s -o ngrok.zip https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-stable-linux-amd64.zip
+      #     unzip ngrok.zip
+      #     sudo mv ngrok /usr/local/bin
+      #     rm ngrok.zip
+
+      
+      # - name: Autenticación con ngrok
+      #   run: ngrok config add-authtoken ${{ secrets.NGROK_AUTH_TOKEN }}
+      
+      # - name: Exponer Locust con ngrok
+      #   run: |
+      #     echo "🔗 Iniciando ngrok para Locust..."
+      #     ngrok http 9102 > locust_ngrok.log &
+      #     sleep 5
+      #     echo "🔗 Link de ngrok generado para Locust:"
+      #     curl -s http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[] | select(.name == "command_line") | "🔗 Locust disponible en: \(.public_url)"'
+      #       # ngrok http 9090 > prometheus_ngrok.log &
+      #       # ngrok http 3000 > grafana_ngrok.log &
+
+      - name: Save Public IP to Variable
+        run: echo "PUBLIC_IP=$(curl -s https://checkip.amazonaws.com)" >> $GITHUB_ENV
+      - name: Use Public IP
+        run: echo "The public IP is ${{ env.PUBLIC_IP }}"
+
+      # 2. Instalar dependencias necesarias
+      - name: Instalar dependencias
+        working-directory: ./tests_runner
+        run: |
+          sudo apt-get update
+          pip install -r requeriments.txt
+      # pip install locust prometheus_client
+
+      - name: Detener contenedores y liberar puerto
+        run: |
+          # Verificar y detener Prometheus
+          if docker ps -a --format '{{.Names}}' | grep -q "^prometheus$"; then
+            docker stop prometheus
+            docker rm prometheus
+          else
+            echo "El contenedor prometheus no existe."
+          fi
+      
+          # Verificar y detener Grafana
+          if docker ps -a --format '{{.Names}}' | grep -q "^grafana$"; then
+            docker stop grafana
+            docker rm grafana
+          else
+            echo "El contenedor grafana no existe."
+          fi
+      
+          # Liberar puerto 9102 si está en uso
+          PID=$(lsof -i :9102 | awk '{print $2}' | tail -n 1)
+          if [ -n "$PID" ]; then
+            kill -9 $PID
+          else
+            echo "El puerto 9102 no está en uso."
+          fi
+
+# # 3. Levantar Locust
+#       - name: Levantar Locust para pruebas de rendimiento
+#         working-directory: ./tests_runner
+#         run: |
+#           locust --headless -u 50 -r 10 --run-time 5m \
+#           -H "$API_URL" \
+#           -f ./tests/performance/locustfile.py --web-port 9102 &
+#         env:
+#           API_URL: ${{ env.API_URL }}
+
+
+      # 7. Ejecutar el script aws_api_tester.py
+      - name: Ejecutar script aws_api_tester.py
+        working-directory: ./tests_runner
+        run: |
+          echo "Ejecutando aws_api_tester.py..."
+          python aws_api_tester.py
+        env:
+          API_URL: ${{ env.API_URL }}
+
+      - name: Terraform Destroy
+        working-directory: ./terraform
+        run: terraform destroy -auto-approve
+
+  create-release:
+    runs-on: ubuntu-latest
+    needs: cleanup-and-deploy
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Crear un release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: "v${{ github.run_number }}"
+          release_name: "Release v${{ github.run_number }}"
+          body: "Este es un release generado automáticamente después de la ejecución en master."
+          draft: false
+          prerelease: false
+        
+  merge-to-develop:
+    runs-on: ubuntu-latest
+    needs: create-release
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Cambiar a la rama master
+        run: |
+          git fetch
+          git checkout master
+
+      - name: Configurar identidad de Git
+        run: |
+          git config  user.email "laura.lassogar@gmail.com"
+          git config  user.name "LauraLasso"
+
+      - name: Resolver conflictos priorizando develop
+        run: |
+          git merge origin/develop --allow-unrelated-histories || true
+          git checkout --theirs .
+          git add .
+          git commit -m "Resolviendo conflictos priorizando develop"
+          git push origin master
+
+
+      - name: List Terraform files
+        run: ls -la ./terraform
+
+      # Configurar las credenciales AWS
+      - name: Configure AWS CLI
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}  # Solo si usas token temporal
+          aws-region: us-east-1
+
+      - name: Verificar AWS CLI
+        run: aws --version
+
+      - name: Verificar permisos de AWS
+        run: aws sts get-caller-identity
+
+
+      # Repetir flujo en develop
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: "latest"
+
+      - name: Terraform Init
+        working-directory: ./terraform
+        run: terraform init
+
+      - name: Terraform Plan
+        working-directory: ./terraform
+        run: terraform plan -out=tfplan
+        
+      - name: Terraform Apply
+        working-directory: ./terraform
+        run: terraform apply -auto-approve tfplan

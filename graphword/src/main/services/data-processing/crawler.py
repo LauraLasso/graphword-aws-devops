@@ -193,59 +193,37 @@ class NormalizedGutenbergFileReader(GutenbergFileReader):
 
 
 class Controller:
-    
-    def __init__(self, batch_size):
+    def __init__(self, batch_size, total_books):
         self.gutenberg_file_reader = NormalizedGutenbergFileReader()  # Cambiado a NormalizedGutenbergFileReader
         self.batch_size = batch_size
+        self.total_books = total_books
         self.ids = [None] * batch_size
         self.batch_downloader = BatchDownloader(batch_size, self.gutenberg_file_reader, self.ids)
         self.guttenberg_datalake_creator = GuttenbergDatalakeCreator()
-        #self.vocabulary_processor = VocabularyProcessor()
 
     def execute(self):
-       current = datetime.now()
-       self.guttenberg_datalake_creator.create_date_folder(current)
-       time.sleep(1)
-       self.batch_downloader.download()
-        
+        current = datetime.now()
+        self.guttenberg_datalake_creator.create_date_folder(current)
+        time.sleep(1)
+        self.batch_downloader.download()
+
         # Llamar al método para procesar todos los archivos después de la descarga
-       self.gutenberg_file_reader.process_all_files()
-
-    # def execute(self):
-    #     current = datetime.now()
-    #     self.guttenberg_datalake_creator.create_date_folder(current)
-    #     time.sleep(1)
-    #     self.batch_downloader.download()
-    #     self.gutenberg_file_reader.process_all_files()
-
-    #     # Procesar los archivos normalizados y actualizar el vocabulario global
-    #     base_directory = "datalake"
-    #     for date_dir in os.listdir(base_directory):
-    #         date_path = os.path.join(base_directory, date_dir)
-    #         if os.path.isdir(date_path):
-    #             for book_dir in os.listdir(date_path):
-    #                 normalized_file = os.path.join(date_path, book_dir, f"normalized_{book_dir}.txt")
-    #                 vocab_file_path = os.path.join(date_path, book_dir, f"vocab_{book_dir}.txt")
-    #                 if os.path.exists(vocab_file_path):
-    #                     continue
-    #                 if os.path.exists(normalized_file):
-    #                     with open(normalized_file, 'r', encoding='utf-8') as file:
-    #                         content = file.read()
-    #                         doc_vocabulary = self.vocabulary_processor.process_document_vocabulary(content)
-    #                         vocab_file_path = os.path.join(date_path, book_dir, f"vocab_{book_dir}.txt")
-    #                         #self.vocabulary_processor.save_vocabulary_to_file(doc_vocabulary, vocab_file_path)
-
-    #     # Guardar el vocabulario global después de cada lote
-    #     self.vocabulary_processor.save_global_vocabulary()
+        self.gutenberg_file_reader.process_all_files()
 
     def run(self):
-        delay = 0
-        period = 120  # en segundos
-        Timer(delay, self.execute).start()
-        Timer(period, self.run).start()
+        books_downloaded = 0
+        while books_downloaded < self.total_books:
+            print(f"Descargando lote de {self.batch_size} libros...")
+            self.execute()
+            books_downloaded += self.batch_size
+            print(f"Total de libros descargados: {books_downloaded}/{self.total_books}")
 
+            if books_downloaded < self.total_books:
+                print("Esperando 5 minutos para el próximo lote...")
+                time.sleep(300)  # Esperar 2 minutos
+        print("Descarga completa: se han descargado todos los libros.")
 
 # Ejemplo de uso:
 if __name__ == "__main__":
-    controller = Controller(batch_size=5)
+    controller = Controller(batch_size=5, total_books=10)  # Descargar en lotes de 5 hasta 30 libros
     controller.run()

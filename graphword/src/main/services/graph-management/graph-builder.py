@@ -107,13 +107,14 @@ class Controller:
 
         # Expandir grafo hasta que no haya más palabras de longitud mayor
         while True:
-            if self.graph_builder.current_word_length > max(len(word) for word in self.graph_builder.vocabulary):
+            #if self.graph_builder.current_word_length > max(len(word) for word in self.graph_builder.vocabulary):
+            if self.graph_builder.current_word_length > 7:
                 print("Todas las palabras han sido procesadas.")
                 break
 
             self.graph_builder.expand_graph()
-            print(f"Esperando 5 minutos antes de procesar la siguiente longitud...")
-            time.sleep(300)  # Espera 5 minutos
+            print(f"Esperando 5 segundos antes de procesar la siguiente longitud...")
+            time.sleep(5)  # Espera 5 minutos=300
 
 
 if __name__ == "__main__":

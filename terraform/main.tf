@@ -1,52 +1,35 @@
-# provider "aws" {
-#   region = "us-east-1"
-# }
-
 provider "aws" {
-  access_key                  = "test"
-  secret_key                  = "test"
-  region                      = "us-east-1"
-  skip_credentials_validation = true
-  skip_requesting_account_id  = true
-  endpoints {
-    s3             = "http://127.0.0.1:4566"
-    ec2     = "http://localhost:4566"
-    sts     = "http://localhost:4566"
-    iam = "http://localhost:4566"
-    dynamodb       = "http://localhost:4566"
-    lambda         = "http://localhost:4566"
-    sns            = "http://localhost:4566"
-    sqs            = "http://localhost:4566"
-    cloudwatch     = "http://localhost:4566"
-  }
+  region = var.region
 }
 
+data "aws_caller_identity" "current" {}
 
-module "network" {
-  source = "./modules/vpc"  # Ahora apunta al directorio vpc
-  project_name = var.project_name
-}
+module "buckets_and_queues" {
+  source = "./modules/buckets_and_queues"
 
-module "s3_buckets" {
-  source = "./modules/s3" # Ruta al submódulo S3
-  datalake_bucket = var.datalake_bucket
+  datalake_graph_bucket   = var.datalake_graph_bucket
   datamart_dictionary_bucket = var.datamart_dictionary_bucket
-  datamart_graph_bucket = var.datamart_graph_bucket
-  datamart_stats_bucket = var.datamart_stats_bucket
+  datamart_graph_bucket   = var.datamart_graph_bucket
+  datamart_stats_bucket   = var.datamart_stats_bucket
+  code_bucket             = var.code_bucket
+  region                  = var.region
+  suffix_number           = var.suffix_number
+  environment             = var.environment
 }
 
-module "iam" {
-  source = "./modules/iam" # Ruta al submódulo IAM
-  project_name = var.project_name
-  datalake_bucket = var.datalake_bucket
+module "instances" {
+  source = "./modules/instances"
+
+  datalake_graph_bucket   = var.datalake_graph_bucket
   datamart_dictionary_bucket = var.datamart_dictionary_bucket
-  datamart_graph_bucket = var.datamart_graph_bucket
-  datamart_stats_bucket = var.datamart_stats_bucket
-}
+  datamart_graph_bucket   = var.datamart_graph_bucket
+  datamart_stats_bucket   = var.datamart_stats_bucket
+  code_bucket             = var.code_bucket
+  region                  = var.region
+  suffix_number           = var.suffix_number
+  environment             = var.environment
 
-module "ec2_instances" {
-  source = "./modules/ec2" # Ruta al submódulo EC2
-  project_name = var.project_name
-  instance_type = var.instance_type
-  iam_instance_profile = module.iam.ec2_instance_profile_name
+  depends_on = [
+    module.buckets_and_queues
+  ]
 }

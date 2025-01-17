@@ -5,9 +5,9 @@ yum install -y python3 aws-cli python3-pip jq
 pip3 install boto3
 
 # Variables de configuración
-CODE_BUCKET="graph-code-bucket-ulpgc3"
-DATAMART_DICTIONARY_BUCKET="datamart-dictionary-ulpgc3"
-DATAMART_GRAPH_BUCKET="datamart-graph-ulpgc3"
+CODE_BUCKET="graph-code-bucket-ulpgc4"
+DATAMART_DICTIONARY_BUCKET="datamart-dictionary-ulpgc4"
+DATAMART_GRAPH_BUCKET="datamart-graph-ulpgc4"
 LOCAL_DATAMART_DICTIONARY_DIR="/datamart_dictionary"
 LOCAL_DATAMART_GRAPH_DIR="/datamart_graph"
 
@@ -18,7 +18,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-SQS_QUEUE_URL="https://sqs.us-east-1.amazonaws.com/$ACCOUNT_ID/datamart-dictionary-ulpgc3-queue"
+SQS_QUEUE_URL="https://sqs.us-east-1.amazonaws.com/$ACCOUNT_ID/datamart-dictionary-ulpgc4-queue"
 
 # Crear directorios locales
 mkdir -p $LOCAL_DATAMART_DICTIONARY_DIR

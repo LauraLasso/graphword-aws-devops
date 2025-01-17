@@ -5,9 +5,9 @@ yum install -y python3 aws-cli python3-pip jq
 pip3 install networkx matplotlib flask boto3
 
 # Variables de configuración
-CODE_BUCKET="graph-code-bucket-ulpgc3"
-DATAMART_GRAPH_BUCKET="datamart-graph-ulpgc3"
-DATALAKE_BUCKET="datalake-graph-ulpgc3"
+CODE_BUCKET="graph-code-bucket-ulpgc4"
+DATAMART_GRAPH_BUCKET="datamart-graph-ulpgc4"
+DATALAKE_BUCKET="datalake-graph-ulpgc4"
 LOCAL_DATAMART_GRAPH_DIR="/datamart_graph"
 LOCAL_EVENTS_DIR="/datalake/events"
 LAST_SYNC_FILE="/tmp/last_sync_time"
@@ -21,7 +21,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-SQS_QUEUE_URL="https://sqs.us-east-1.amazonaws.com/$ACCOUNT_ID/datamart-graph-ulpgc3-queue"
+SQS_QUEUE_URL="https://sqs.us-east-1.amazonaws.com/$ACCOUNT_ID/datamart-graph-ulpgc4-queue"
 
 # Crear directorios locales
 mkdir -p $LOCAL_DATAMART_GRAPH_DIR
@@ -118,13 +118,13 @@ monitor_sqs_datamart_graph() {
             fi
 
             # Purge de la cola SQS en vez de eliminar un solo mensaje
-            echo "Vaciando toda la cola SQS..."
-            aws sqs purge-queue --queue-url $SQS_QUEUE_URL --region us-east-1
-            if [ $? -ne 0 ]; then
-                echo "Error al vaciar la cola SQS."
-            else
-                echo "Cola SQS vaciada con éxito."
-            fi
+            # echo "Vaciando toda la cola SQS..."
+            # aws sqs purge-queue --queue-url $SQS_QUEUE_URL --region us-east-1
+            # if [ $? -ne 0 ]; then
+            #     echo "Error al vaciar la cola SQS."
+            # else
+            #     echo "Cola SQS vaciada con éxito."
+            # fi
         else
             echo "No hay mensajes en la cola. Esperando..."
         fi

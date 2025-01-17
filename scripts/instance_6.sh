@@ -5,8 +5,8 @@ yum install -y python3 aws-cli python3-pip jq
 pip3 install boto3 flask
 
 # Variables de configuración
-CODE_BUCKET="graph-code-bucket-ulpgc3"
-DATAMART_STATS_BUCKET="datamart-stats-ulpgc3"
+CODE_BUCKET="graph-code-bucket-ulpgc4"
+DATAMART_STATS_BUCKET="datamart-stats-ulpgc4"
 LOCAL_DATAMART_STATS_DIR="/datamart_stats"
 SCRIPT_PATH="/tmp/stat-query.py"
 
@@ -17,7 +17,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-SQS_QUEUE_URL="https://sqs.us-east-1.amazonaws.com/$ACCOUNT_ID/datamart-stats-ulpgc3-queue"
+SQS_QUEUE_URL="https://sqs.us-east-1.amazonaws.com/$ACCOUNT_ID/datamart-stats-ulpgc4-queue"
 
 # Crear directorio local para datamart_stats
 mkdir -p $LOCAL_DATAMART_STATS_DIR

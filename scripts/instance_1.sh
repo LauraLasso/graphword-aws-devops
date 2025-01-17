@@ -5,8 +5,8 @@ yum install -y python3 aws-cli python3-pip
 pip3 install requests
 
 # Variables de configuración
-CODE_BUCKET="graph-code-bucket-ulpgc3"
-DATALAKE_BUCKET="datalake-graph-ulpgc3"
+CODE_BUCKET="graph-code-bucket-ulpgc4"
+DATALAKE_BUCKET="datalake-graph-ulpgc4"
 DATALAKE_DIR="/datalake"
 LAST_SYNC_FILE="/tmp/last_sync_time"
 

@@ -220,10 +220,10 @@ class Controller:
 
             if books_downloaded < self.total_books:
                 print("Esperando 5 minutos para el próximo lote...")
-                time.sleep(300)  # Esperar 2 minutos
+                time.sleep(150)  # Esperar 1 minutos
         print("Descarga completa: se han descargado todos los libros.")
 
 # Ejemplo de uso:
 if __name__ == "__main__":
-    controller = Controller(batch_size=5, total_books=10)  # Descargar en lotes de 5 hasta 30 libros
+    controller = Controller(batch_size=1, total_books=5)  # Descargar en lotes de 5 hasta 30 libros
     controller.run()

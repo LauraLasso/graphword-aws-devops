@@ -22,6 +22,10 @@ graph = nx.DiGraph()
 
 # Función para registrar eventos
 def log_event(endpoint, params, status_code, processing_time=None, additional_data=None):
+
+    if endpoint == "/health":
+        return
+
     # Obtener la fecha actual en formato YYYY-MM-DD
     current_date = time.strftime('%Y%m%d')
 
@@ -70,31 +74,53 @@ def log_event(endpoint, params, status_code, processing_time=None, additional_da
 def log_request():
     if request.method == 'GET':
         endpoint = request.path
+
+        if endpoint == "/health":
+            return
+
         params = request.args.to_dict()
         log_event(endpoint, params, None)  # Sin código de estado y sin tiempo de procesamiento aún
 
-# Función para cargar el grafo desde un archivo .txt
+import glob
+
 def cargar_grafo_desde_txt():
     global graph, original_graph
-    file_path = os.path.join('datamart_graph', 'word_graph.txt')  # Ajusta el nombre si es necesario
+    base_path = 'datamart_graph'
+    original_file = os.path.join(base_path, 'word_graph.txt')
+    script_directory = os.path.dirname(os.path.abspath(__file__))
 
-    # Verificar si la carpeta existe, si no, crearla
-    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    # Buscar archivos filtrados en el directorio actual
+    filtered_graph_files = glob.glob(os.path.join(script_directory, "filtered_graph_*.txt"))
 
-    # Si el archivo no existe, crearlo vacío
+    if filtered_graph_files:
+        # Seleccionar el archivo filtrado más reciente (según orden alfabético de nombres)
+        filtered_graph_file = sorted(filtered_graph_files)[-1]
+        file_path = filtered_graph_file
+        print(f"Archivo de grafo filtrado encontrado: {file_path}")
+    else:
+        file_path = original_file
+        print(f"No se encontraron grafos filtrados. Usando archivo original: {file_path}")
+
+    # Verificar si la carpeta del archivo original existe, si no, crearla
+    os.makedirs(base_path, exist_ok=True)
+
+    # Si el archivo seleccionado no existe, crear un archivo vacío
     if not os.path.exists(file_path):
         print(f"Archivo {file_path} no encontrado. Creando archivo vacío...")
-        open(file_path, 'w').close()  # Crea un archivo vacío
+        open(file_path, 'w').close()  # Crear un archivo vacío
         return  # Salir para que no intente cargar un archivo vacío en esta ejecución
 
     # Leer y cargar el grafo desde el archivo
+    graph = nx.DiGraph()
     with open(file_path, 'r', encoding='utf-8') as f:
         for line in f:
             parts = line.strip().split()
             if len(parts) == 3:
                 palabra1, palabra2, peso = parts
                 graph.add_edge(palabra1, palabra2, weight=float(peso))
+
     original_graph = graph.copy()  # Guardar una copia del grafo original
+    print(f"Grafo cargado desde: {file_path}")
 
 
 # Cargar el grafo al inicio
@@ -106,7 +132,8 @@ def home():
     routes = [
         #{"path": "/graph", "description": "Visualiza el grafo."},
         {"path": "/shortest-path?origen=<nodo>&destino=<nodo>", "description": "Encuentra el camino más corto entre dos nodos."},
-        {"path": "/all-paths?origen=<nodo>&destino=<nodo>", "description": "Encuentra todos los caminos posibles entre dos nodos."},
+        #{"path": "/all-paths?origen=<nodo>&destino=<nodo>", "description": "Encuentra todos los caminos posibles entre dos nodos."},
+        {"path": "/all-paths?origen=<nodo>&destino=<nodo>&max_depth=<numero>&max_paths=<numero>", "description": "Encuentra rutas posibles entre dos nodos con un límite opcional de longitud máxima y número de rutas. Por defecto, la longitud máxima es 5 y se devuelven hasta 50 rutas."},
         {"path": "/maximum-distance", "description": "Calcula la distancia máxima entre nodos."},
         {"path": "/clusters", "description": "Muestra los clústeres del grafo."},
         {"path": "/high-connectivity-nodes?min=<número>", "description": "Lista nodos con alta conectividad."},
@@ -223,11 +250,42 @@ def shortest_path():
         log_event('/shortest-path', params, 404, processing_time, {"error": "No hay camino entre los nodos"})
         return jsonify({'error': 'No hay camino entre los nodos'}), 404
 
+# @app.route('/all-paths', methods=['GET'])
+# def all_paths():
+#     start_time = time.time()
+#     origen = request.args.get('origen')
+#     destino = request.args.get('destino')
+#     params = {"origen": origen, "destino": destino}
+
+#     if not (graph.has_node(origen) and graph.has_node(destino)):
+#         processing_time = time.time() - start_time
+#         log_event('/all-paths', params, 404, processing_time, {"error": "Uno o ambos nodos no existen"})
+#         return jsonify({'error': 'Uno o ambos nodos no existen'}), 404
+
+#     try:
+#         paths = list(nx.all_simple_paths(graph, source=origen, target=destino))
+#         weighted_paths = [
+#             {
+#                 'path': path,
+#                 'total_weight': sum(graph[path[i]][path[i + 1]]['weight'] for i in range(len(path) - 1))
+#             }
+#             for path in paths
+#         ]
+#         processing_time = time.time() - start_time
+#         log_event('/all-paths', params, 200, processing_time, {"weighted_paths": weighted_paths})
+#         return jsonify({'weighted_paths': weighted_paths}), 200
+#     except Exception as e:
+#         processing_time = time.time() - start_time
+#         log_event('/all-paths', params, 500, processing_time, {"error": str(e)})
+#         return jsonify({'error': 'Error interno del servidor'}), 500
+
 @app.route('/all-paths', methods=['GET'])
 def all_paths():
     start_time = time.time()
     origen = request.args.get('origen')
     destino = request.args.get('destino')
+    max_depth = int(request.args.get('max_depth', 5))  # Profundidad máxima
+    max_paths = int(request.args.get('max_paths', 50))  # Número máximo de rutas a devolver
     params = {"origen": origen, "destino": destino}
 
     if not (graph.has_node(origen) and graph.has_node(destino)):
@@ -236,21 +294,24 @@ def all_paths():
         return jsonify({'error': 'Uno o ambos nodos no existen'}), 404
 
     try:
-        paths = list(nx.all_simple_paths(graph, source=origen, target=destino))
-        weighted_paths = [
-            {
+        paths = []
+        for path in nx.all_simple_paths(graph, source=origen, target=destino, cutoff=max_depth):
+            if len(paths) >= max_paths:
+                break
+            weighted_path = {
                 'path': path,
                 'total_weight': sum(graph[path[i]][path[i + 1]]['weight'] for i in range(len(path) - 1))
             }
-            for path in paths
-        ]
+            paths.append(weighted_path)
+
         processing_time = time.time() - start_time
-        log_event('/all-paths', params, 200, processing_time, {"weighted_paths": weighted_paths})
-        return jsonify({'weighted_paths': weighted_paths}), 200
+        log_event('/all-paths', params, 200, processing_time, {"weighted_paths": paths})
+        return jsonify({'weighted_paths': paths}), 200
     except Exception as e:
         processing_time = time.time() - start_time
         log_event('/all-paths', params, 500, processing_time, {"error": str(e)})
         return jsonify({'error': 'Error interno del servidor'}), 500
+
 
 @app.route('/maximum-distance', methods=['GET'])
 def maximum_distance():
@@ -270,14 +331,13 @@ def maximum_distance():
 def health():
     return "OK", 200
 
-@app.route('/filter-graph', methods=['GET']) # http://<DNS-PUBLICO-DEL-ALB>/filter-graph?min=3&max=6
+@app.route('/filter-graph', methods=['GET'])  # http://<DNS-PUBLICO-DEL-ALB>/filter-graph?min=3&max=6
 def filter_graph():
     global graph  # Usar la variable global para actualizar el grafo principal
-    # longitud_min = int(request.json.get('min', 1))
-    # longitud_max = int(request.json.get('max', 10))
 
-    longitud_min = int(request.args.get('min', 1))  # Lee desde los query params
-    longitud_max = int(request.args.get('max', 10))
+    # Leer los parámetros desde la URL
+    longitud_min = int(request.args.get('min', 1))  # Valor por defecto 1
+    longitud_max = int(request.args.get('max', 10))  # Valor por defecto 10
 
     subgraph = nx.DiGraph()
 
@@ -289,18 +349,44 @@ def filter_graph():
     # Actualizar el grafo principal con el subgrafo filtrado
     graph = subgraph
 
+    # Obtener la ruta del script actual
+    script_directory = os.path.dirname(os.path.abspath(__file__))
+
+    # Crear el archivo en el mismo directorio del script
+    filtered_graph_file = os.path.join(script_directory, f"filtered_graph_{longitud_min}_{longitud_max}.txt")
+    
+    with open(filtered_graph_file, 'w', encoding='utf-8') as f:
+        for u, v, d in subgraph.edges(data=True):
+            weight = d.get('weight', 1.0)  # Valor por defecto del peso
+            f.write(f"{u} {v} {weight}\n")
+
     return jsonify({
         "status": "success",
-        "message": f"Grafo filtrado y actualizado con palabras de longitud entre {longitud_min} y {longitud_max}",
+        "message": f"Grafo filtrado y guardado como {filtered_graph_file} con palabras de longitud entre {longitud_min} y {longitud_max}",
         "nodes_count": len(graph.nodes),
-        "edges_count": len(graph.edges)
+        "edges_count": len(graph.edges),
+        "file_path": filtered_graph_file
     })
 
 @app.route('/reset-graph', methods=['GET'])
 def reset_graph():
     global graph, original_graph
-    graph = original_graph
-    return jsonify({"status": "success", "message": "Grafo restaurado al estado original"})
+    script_directory = os.path.dirname(os.path.abspath(__file__))
+
+    # Buscar archivos que coincidan con el patrón "filtered_graph_<min>_<max>.txt"
+    for filename in os.listdir(script_directory):
+        if filename.startswith("filtered_graph_") and filename.endswith(".txt"):
+            file_path = os.path.join(script_directory, filename)
+            try:
+                os.remove(file_path)
+                print(f"Archivo eliminado: {file_path}")
+            except Exception as e:
+                print(f"Error al eliminar el archivo {file_path}: {e}")
+
+    # Restaurar el grafo al original
+    cargar_grafo_desde_txt()
+    #graph = original_graph
+    return jsonify({"status": "success", "message": "Grafo restaurado al estado original y archivos de grafo filtrado eliminados."})
 
 @app.route('/clusters', methods=['GET'])
 def clusters():

@@ -1,0 +1,6 @@
+# Terraform-specific files
+terraform/.terraform/  # Ignora el directorio .terraform dentro de terraform/
+terraform/*.tfstate
+terraform/*.tfstate.backup
+terraform/.terraform.lock.hcl
+terraform/crash.log

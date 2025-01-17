@@ -1,6 +1,6 @@
 ```mermaid
 graph TD
-    A[Push or PR to master] --> B[Checkout Code]
+    A[Push or PR to develop] --> B[Checkout Code]
     B --> C[Configure AWS CLI Credentials]
     C --> D[Setup Terraform]
     D --> E[Terraform Init]
@@ -11,7 +11,7 @@ graph TD
     I --> J[Run Monitoring with Prometheus/Grafana]
     J --> K[Terraform Destroy]
     K --> L[Create Release]
-    L --> M[Merge to Develop]
+    L --> M[Merge to master]
     M --> N[Re-Run Terraform in Develop]
     N --> O[Pipeline Completed]
 

@@ -200,9 +200,8 @@ jobs:
           git merge origin/develop --allow-unrelated-histories || true
           git checkout --theirs .
           git add .
-          git reset HEAD .github/workflows/  # Excluye los archivos de workflows
           git commit -m "Resolving conflicts favoring develop" || echo "No changes to commit"
-          git push origin master --force
+          git push origin master
 
       - name: List Terraform files
         run: ls -la ./terraform

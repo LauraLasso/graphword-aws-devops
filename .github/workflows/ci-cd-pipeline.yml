@@ -199,6 +199,7 @@ jobs:
       - name: Resolve conflicts favoring develop
         run: |
           echo ".github/workflows/" >> .gitignore  # Add workflows directory to .gitignore
+          echo "GraphWord Scalable Graph AWS.pdf" >> .gitignore  # Add the PDF to .gitignore
           git add .gitignore
           git merge origin/develop --allow-unrelated-histories || true
           git checkout --theirs .
@@ -206,6 +207,7 @@ jobs:
           git commit -m "Resolving conflicts favoring develop" || echo "No changes to commit"
           git push origin master
           git rm --cached .gitignore  # Remove the temporary .gitignore
+
 
       - name: List Terraform files
         run: ls -la ./terraform

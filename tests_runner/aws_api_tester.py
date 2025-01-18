@@ -30,7 +30,7 @@ def run_api_tests():
 
 def run_performance_tests():
     print("\n==== Running Performance Tests with Locust ====")
-    run_command("pip install locust")  
+    run_command("pip install locust prometheus_client")  
     run_command(
         f"locust --headless -u 50 -r 20 --run-time 5m "
         f"-H {API_URL} -f tests/performance/locustfile.py --web-port 9102"

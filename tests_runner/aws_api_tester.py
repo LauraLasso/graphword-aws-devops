@@ -3,6 +3,7 @@ import subprocess
 import time
 import threading
 
+
 AWS_REGION = "us-east-1"
 API_URL = os.getenv("API_URL")
 
